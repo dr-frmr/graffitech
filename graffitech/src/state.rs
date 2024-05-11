@@ -1,17 +1,18 @@
 use hex_color::HexColor;
+use kinode_process_lib::NodeId;
 use std::collections::HashMap;
 
-pub struct World {}
+pub struct World {
+    pub drawings: HashMap<NodeId, Drawing>,
+}
+
+pub type Drawing = Vec<Point>;
 
 pub struct Point {
     pub x: i64,
     pub y: i64,
-    pub marks: HashMap<String, Mark>,
-}
-
-pub struct Mark {
-    pub who: String,
-    pub color: Option<HexColor>,
+    pub author: NodeId,
+    color: HexColor,
 }
 
 mod autosurgeon_address {

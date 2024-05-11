@@ -5,7 +5,7 @@
     "properties": {
         "package_name": "graffitech",
         "current_version": "0.1.0",
-        "publisher": "mothu-et-doria.os",
+        "publisher": "mothu.eth",
         "mirrors": [],
         "code_hashes": {
             "0.1.0": ""
