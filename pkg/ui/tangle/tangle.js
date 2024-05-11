@@ -1018,9 +1018,10 @@ var Tangle = class {
         this._tangle_state = state;
     }
     async setup_inner(room_name, wasm_binary) {
-        room_name ?? (room_name = document.location.href);
-        const hash = this._rust_utilities.hash_data(wasm_binary);
-        room_name += hash.join("");
+        // room_name ?? (room_name = document.location.href);
+        // const hash = this._rust_utilities.hash_data(wasm_binary);
+        // room_name += hash.join("");
+        room_name = "HOLA";
         const room_configuration = {
             server_url: this._configuration.room_server,
             ice_servers: this._configuration.ice_servers,
