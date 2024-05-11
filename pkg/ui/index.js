@@ -17,7 +17,7 @@ async function run() {
         }
     };
 
-    const result = await Tangle.instantiateStreaming(fetch("ballpit.wasm"), imports);
+    const result = await Tangle.instantiateStreaming(fetch("/graffitech:graffitech:mothu.eth/ballpit.wasm"), imports);
     const exports = result.instance.exports;
 
     canvas.onpointerdown = async (event) => {
