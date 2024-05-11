@@ -8,3 +8,7 @@ pkg/*.wasm
 */wasi_snapshot_preview1.wasm
 */wit/
 */process_env
+
+pkg/canvas/node_modules/
+pkg/canvas/dist
+pkg/canvas/pkg

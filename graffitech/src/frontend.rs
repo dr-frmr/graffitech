@@ -6,7 +6,7 @@ use kinode_process_lib::{
 use std::collections::HashSet;
 
 pub fn serve(our: &Address) {
-    http::serve_ui(our, "ui", true, false, vec!["/"]).expect("couldn't serve UI");
+    http::serve_ui(our, "canvas/dist", true, false, vec!["/"]).expect("couldn't serve UI");
     // http::bind_http_path("/state", true, false).expect("couldn't bind HTTP state path");
     // http::bind_http_path("/post", true, false).expect("couldn't bind HTTP post path");
     // http::bind_ws_path("/updates", true, false).expect("couldn't bind WS updates path");
