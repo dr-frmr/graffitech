@@ -1,7 +1,7 @@
 use kinode_process_lib::{
     http,
     http::{HttpServerRequest, IncomingHttpRequest, Method, StatusCode},
-    Address, Message,
+    println, Address, Message,
 };
 use std::collections::HashSet;
 
@@ -9,24 +9,21 @@ pub fn serve(our: &Address) {
     http::serve_ui(our, "canvas/dist", true, false, vec!["/"]).expect("couldn't serve UI");
     // http::bind_http_path("/state", true, false).expect("couldn't bind HTTP state path");
     // http::bind_http_path("/post", true, false).expect("couldn't bind HTTP post path");
-    // http::bind_ws_path("/updates", true, false).expect("couldn't bind WS updates path");
+    http::bind_ws_path("/ws", true, false).expect("couldn't bind WS updates path");
 
     // add icon to homepage
     kinode_process_lib::homepage::add_to_homepage("Graffi.tech", None, Some("/"), None);
 }
 
-pub fn send_ws_updates(ws_channels: &HashSet<u32>) {
+pub fn send_ws_updates(value: serde_json::Value, ws_channels: &HashSet<u32>) {
     if ws_channels.is_empty() {
         return;
     }
-    let bytes = serde_json::json!({ "hi": "there" })
-        .to_string()
-        .as_bytes()
-        .to_vec();
+    let bytes = value.to_string().as_bytes().to_vec();
     for channel_id in ws_channels.iter() {
         http::send_ws_push(
             *channel_id,
-            http::WsMessageType::Text,
+            http::WsMessageType::Binary,
             kinode_process_lib::LazyLoadBlob {
                 mime: Some("application/json".to_string()),
                 bytes: bytes.clone(),
@@ -71,7 +68,14 @@ pub fn handle_http_request(
             ws_channels.remove(&channel_id);
         }
         HttpServerRequest::WebSocketPush { .. } => {
-            // ignore for now
+            // for now just print blob as string
+            let blob = kinode_process_lib::get_blob();
+            if let Some(blob) = blob {
+                let string = String::from_utf8_lossy(&blob.bytes);
+                println!("WS message received: {}", string);
+                // echo back what we got to all channels
+                send_ws_updates(string.into(), ws_channels);
+            }
         }
     }
     Ok(())
