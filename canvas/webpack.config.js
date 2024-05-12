@@ -6,7 +6,7 @@ const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 module.exports = {
     entry: './index.js',
     output: {
-        path: path.resolve(__dirname, '../pkg/canvas/dist'),
+        path: path.resolve(__dirname, '../graffitech/pkg/dist'),
         filename: 'index.js',
     },
     plugins: [

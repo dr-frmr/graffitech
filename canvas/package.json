@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "build": "rm -rf ../pkg/canvas/dist && webpack",
+        "build": "rm -rf ../graffitech/pkg/dist && webpack",
         "serve": "webpack serve"
     },
     "devDependencies": {

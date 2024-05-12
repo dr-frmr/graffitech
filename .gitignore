@@ -1,7 +1,6 @@
 .DS_Store
 
-*/target/
-/target
+**/target/
 pkg/*.wasm
 *.swp
 *.swo
@@ -11,4 +10,4 @@ pkg/*.wasm
 
 canvas/node_modules/
 canvas/pkg
-pkg/canvas/dist
+graffitech/pkg/dist

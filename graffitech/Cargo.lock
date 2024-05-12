@@ -557,19 +557,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "canvas"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "graffitech_lib",
- "js-sys",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.96"
 source = "registry+https://github.com/rust-lang/crates.io-index"
