@@ -560,6 +560,8 @@ dependencies = [
 name = "canvas"
 version = "0.1.0"
 dependencies = [
+ "bincode",
+ "graffitech_lib",
  "js-sys",
  "serde",
  "serde_json",
@@ -924,6 +926,22 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "graffitech"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "automerge",
+ "autosurgeon",
+ "bincode",
+ "graffitech_lib",
+ "hex_color",
+ "kinode_process_lib",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "graffitech_lib"
 version = "0.1.0"
 dependencies = [
  "anyhow",

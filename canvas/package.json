@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "build": "rm -rf dist && webpack",
+        "build": "rm -rf ../pkg/canvas/dist && webpack",
         "serve": "webpack serve"
     },
     "devDependencies": {

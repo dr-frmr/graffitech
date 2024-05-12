@@ -3,8 +3,6 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::{window, ErrorEvent, MessageEvent, WebSocket};
 
-const APP_NAME: &str = "graffitech:graffitech:mothu.eth";
-
 type CanvasContext = Rc<web_sys::CanvasRenderingContext2d>;
 
 macro_rules! console_log {
@@ -64,7 +62,7 @@ fn connect_to_node() -> Result<WebSocket, JsValue> {
         "{}{}/{}/ws",
         protocol,
         window.location().host().unwrap(),
-        APP_NAME
+        graffitech_lib::APP_NAME
     ))?;
 
     // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
@@ -85,6 +83,7 @@ fn enable_draw(
     // set the line width and color
     context.set_line_width(5.0);
     context.set_stroke_style(&"red".into());
+    context.set_line_cap("square");
 
     // handle mouse press events
     {
@@ -95,12 +94,12 @@ fn enable_draw(
             context.begin_path();
             context.move_to(event.offset_x() as f64, event.offset_y() as f64);
             pressed.set(true);
-            ws.send_with_str(&format!(
-                "mouse got pressed at ({}, {})",
-                event.offset_x(),
-                event.offset_y()
-            ))
-            .unwrap();
+            // ws.send_with_str(&format!(
+            //     "mouse got pressed at ({}, {})",
+            //     event.offset_x(),
+            //     event.offset_y()
+            // ))
+            // .unwrap();
         });
         canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -113,16 +112,19 @@ fn enable_draw(
         let ws = ws.clone();
         let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
             if pressed.get() {
-                context.line_to(event.offset_x() as f64, event.offset_y() as f64);
+                let x = event.offset_x() as f64;
+                let y = event.offset_y() as f64;
+                context.line_to(x, y);
                 context.stroke();
                 context.begin_path();
-                context.move_to(event.offset_x() as f64, event.offset_y() as f64);
-                ws.send_with_str(&format!(
-                    "mouse got moved to ({}, {})",
-                    event.offset_x(),
-                    event.offset_y()
-                ))
-                .unwrap();
+                context.move_to(x, y);
+                let message = graffitech_lib::CanvasMessage { x, y };
+                let message_bytes: Vec<u8> = bincode::serialize(&message).unwrap();
+                // Create a Uint8Array view directly over the slice.
+                let uint8_array = unsafe { js_sys::Uint8Array::view(&message_bytes) };
+                // Send the ArrayBuffer part of the Uint8Array.
+                ws.send_with_array_buffer(&uint8_array.buffer()).unwrap();
+                drop(message_bytes);
             }
         });
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
@@ -136,7 +138,7 @@ fn enable_draw(
             pressed.set(false);
             context.line_to(event.offset_x() as f64, event.offset_y() as f64);
             context.stroke();
-            ws.send_with_str("mouse got released").unwrap();
+            // ws.send_with_str("mouse got released").unwrap();
         });
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -161,33 +163,6 @@ fn enable_recv(ws: &WebSocket, context: CanvasContext) -> Result<(), JsValue> {
             context.set_font("16px Arial");
             let _ = context.fill_text(&message, 10.0, 20.0);
         }
-
-        // if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
-        //     console_log!("message event, received arraybuffer: {:?}", abuf);
-        //     let array = js_sys::Uint8Array::new(&abuf);
-        //     let len = array.byte_length() as usize;
-        //     console_log!("Arraybuffer received {}bytes: {:?}", len, array.to_vec());
-        //     // here you can for example use Serde Deserialize decode the message
-        // } else if let Ok(blob) = e.data().dyn_into::<web_sys::Blob>() {
-        //     console_log!("message event, received blob: {:?}", blob);
-        //     // better alternative to juggling with FileReader is to use https://crates.io/crates/gloo-file
-        //     let fr = web_sys::FileReader::new().unwrap();
-        //     let fr_c = fr.clone();
-        //     // create onLoadEnd callback
-        //     let onloadend_cb = Closure::<dyn FnMut(_)>::new(move |_e: web_sys::ProgressEvent| {
-        //         let array = js_sys::Uint8Array::new(&fr_c.result().unwrap());
-        //         let len = array.byte_length() as usize;
-        //         console_log!("Blob received {}bytes: {:?}", len, array.to_vec());
-        //         // here you can for example use the received image/png data
-        //     });
-        //     fr.set_onloadend(Some(onloadend_cb.as_ref().unchecked_ref()));
-        //     fr.read_as_array_buffer(&blob).expect("blob not readable");
-        //     onloadend_cb.forget();
-        // } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
-        //     console_log!("message event, received Text: {:?}", txt);
-        // } else {
-        //     console_log!("message event, received Unknown: {:?}", e.data());
-        // }
     });
 
     // set message event handler on WebSocket

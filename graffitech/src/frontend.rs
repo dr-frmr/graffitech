@@ -71,10 +71,8 @@ pub fn handle_http_request(
             // for now just print blob as string
             let blob = kinode_process_lib::get_blob();
             if let Some(blob) = blob {
-                let string = String::from_utf8_lossy(&blob.bytes);
-                println!("WS message received: {}", string);
-                // echo back what we got to all channels
-                send_ws_updates(string.into(), ws_channels);
+                let message: graffitech_lib::CanvasMessage = bincode::deserialize(&blob.bytes)?;
+                println!("WS message received: {}", message);
             }
         }
     }

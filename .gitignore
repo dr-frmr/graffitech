@@ -9,6 +9,6 @@ pkg/*.wasm
 */wit/
 */process_env
 
-pkg/canvas/node_modules/
+canvas/node_modules/
+canvas/pkg
 pkg/canvas/dist
-pkg/canvas/pkg
