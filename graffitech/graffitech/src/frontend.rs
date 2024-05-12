@@ -6,7 +6,7 @@ use kinode_process_lib::{
 use std::collections::HashSet;
 
 pub fn serve(our: &Address) {
-    http::serve_ui(our, "canvas/dist", true, false, vec!["/"]).expect("couldn't serve UI");
+    http::serve_ui(our, "dist", true, false, vec!["/"]).expect("couldn't serve UI");
     // http::bind_http_path("/state", true, false).expect("couldn't bind HTTP state path");
     // http::bind_http_path("/post", true, false).expect("couldn't bind HTTP post path");
     http::bind_ws_path("/ws", true, false).expect("couldn't bind WS updates path");
@@ -71,7 +71,7 @@ pub fn handle_http_request(
             // for now just print blob as string
             let blob = kinode_process_lib::get_blob();
             if let Some(blob) = blob {
-                let message: graffitech_lib::CanvasMessage = bincode::deserialize(&blob.bytes)?;
+                let message: graffitech_lib::CanvasMessage = serde_json::from_slice(&blob.bytes)?;
                 println!("WS message received: {}", message);
             }
         }

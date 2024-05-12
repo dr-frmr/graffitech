@@ -38,8 +38,13 @@ fn make_canvas() -> Result<(web_sys::HtmlCanvasElement, CanvasContext), JsValue>
         .create_element("canvas")?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
     document.body().unwrap().append_child(&canvas)?;
-    canvas.set_width(window.inner_width().unwrap().as_f64().unwrap() as u32);
-    canvas.set_height(window.inner_height().unwrap().as_f64().unwrap() as u32);
+    canvas.set_width(500);
+    canvas.set_height(500);
+    canvas.style().set_property("margin-top", "20px")?;
+    canvas.style().set_property("margin", "auto")?;
+    canvas.style().set_property("display", "block")?;
+    canvas.style().set_property("border", "1px solid black")?;
+    canvas.style().set_property("border-radius", "10px")?;
 
     // get the 2d context for the canvas so we can draw on it
     let context = canvas
@@ -81,9 +86,9 @@ fn enable_draw(
     let pressed = Rc::new(Cell::new(false));
 
     // set the line width and color
-    context.set_line_width(5.0);
+    context.set_line_width(2.0);
     context.set_stroke_style(&"red".into());
-    context.set_line_cap("square");
+    context.set_fill_style(&"red".into());
 
     // handle mouse press events
     {
@@ -91,8 +96,8 @@ fn enable_draw(
         let pressed = pressed.clone();
         let ws = ws.clone();
         let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
-            context.begin_path();
-            context.move_to(event.offset_x() as f64, event.offset_y() as f64);
+            // context.begin_path();
+            // context.move_to(event.offset_x() as f64, event.offset_y() as f64);
             pressed.set(true);
             // ws.send_with_str(&format!(
             //     "mouse got pressed at ({}, {})",
@@ -114,17 +119,18 @@ fn enable_draw(
             if pressed.get() {
                 let x = event.offset_x() as f64;
                 let y = event.offset_y() as f64;
-                context.line_to(x, y);
-                context.stroke();
-                context.begin_path();
-                context.move_to(x, y);
+
+                // context.fill_style("rgba(255, 0, 0, 1)");
+                context.fill_rect(x, y, 1.0, 1.0);
+                // context.line_to(x, y);
+                // context.stroke();
+                // context.begin_path();
+                // context.move_to(x, y);
                 let message = graffitech_lib::CanvasMessage { x, y };
-                let message_bytes: Vec<u8> = bincode::serialize(&message).unwrap();
-                // Create a Uint8Array view directly over the slice.
-                let uint8_array = unsafe { js_sys::Uint8Array::view(&message_bytes) };
-                // Send the ArrayBuffer part of the Uint8Array.
+                console_log!("sending message: {}", message);
+                let message_bytes: Vec<u8> = serde_json::to_vec(&message).unwrap();
+                let uint8_array = js_sys::Uint8Array::from(&message_bytes[..]);
                 ws.send_with_array_buffer(&uint8_array.buffer()).unwrap();
-                drop(message_bytes);
             }
         });
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
@@ -136,8 +142,8 @@ fn enable_draw(
         let ws = ws.clone();
         let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
             pressed.set(false);
-            context.line_to(event.offset_x() as f64, event.offset_y() as f64);
-            context.stroke();
+            // context.line_to(event.offset_x() as f64, event.offset_y() as f64);
+            // context.stroke();
             // ws.send_with_str("mouse got released").unwrap();
         });
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
