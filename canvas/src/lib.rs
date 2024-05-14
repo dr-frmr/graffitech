@@ -1,7 +1,10 @@
 use std::cell::Cell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use web_sys::{window, ErrorEvent, MessageEvent, WebSocket};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{
+    window, ErrorEvent, MessageEvent, Request, RequestInit, RequestMode, Response, WebSocket,
+};
 
 type CanvasContext = Rc<web_sys::CanvasRenderingContext2d>;
 
@@ -16,16 +19,35 @@ extern "C" {
 }
 
 #[wasm_bindgen(start)]
-fn start() -> Result<(), JsValue> {
+async fn start() -> Result<(), JsValue> {
     console_log!("hello from wasm");
+
+    let my_color = http_get("color").await?;
 
     let ws = connect_to_node()?;
     let (canvas, canvas_context) = make_canvas()?;
 
-    enable_draw(&ws, &canvas, canvas_context.clone())?;
+    enable_draw(&ws, my_color, &canvas, canvas_context.clone())?;
     enable_recv(&ws, canvas_context.clone())?;
 
     Ok(())
+}
+
+async fn http_get(path: &str) -> Result<JsValue, JsValue> {
+    let mut opts = RequestInit::new();
+    opts.method("GET");
+    opts.mode(RequestMode::Cors);
+
+    let url = format!("/{}/{}", graffitech_lib::APP_NAME, path);
+
+    let request = Request::new_with_str_and_init(&url, &opts)?;
+
+    let window = web_sys::window().unwrap();
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+
+    let resp: Response = resp_value.dyn_into().unwrap();
+    let json = JsFuture::from(resp.json()?).await?;
+    Ok(json)
 }
 
 /// put a canvas on the page and return drawable context
@@ -38,10 +60,14 @@ fn make_canvas() -> Result<(web_sys::HtmlCanvasElement, CanvasContext), JsValue>
         .create_element("canvas")?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
     document.body().unwrap().append_child(&canvas)?;
-    canvas.set_width(500);
-    canvas.set_height(500);
-    canvas.style().set_property("margin-top", "20px")?;
-    canvas.style().set_property("margin", "auto")?;
+    canvas.set_width(50);
+    canvas.set_height(50);
+    canvas
+        .style()
+        .set_property("image-rendering", "pixelated")?;
+    canvas.style().set_property("width", "500px")?;
+    canvas.style().set_property("height", "500px")?;
+    canvas.style().set_property("margin", "20px auto")?;
     canvas.style().set_property("display", "block")?;
     canvas.style().set_property("border", "1px solid black")?;
     canvas.style().set_property("border-radius", "10px")?;
@@ -79,6 +105,7 @@ fn connect_to_node() -> Result<WebSocket, JsValue> {
 /// create handlers for drawing events on the canvas
 fn enable_draw(
     ws: &WebSocket,
+    color: JsValue,
     canvas: &web_sys::HtmlCanvasElement,
     context: CanvasContext,
 ) -> Result<(), JsValue> {
@@ -87,24 +114,15 @@ fn enable_draw(
 
     // set the line width and color
     context.set_line_width(2.0);
-    context.set_stroke_style(&"red".into());
-    context.set_fill_style(&"red".into());
+
+    context.set_stroke_style(&color);
+    context.set_fill_style(&color);
 
     // handle mouse press events
     {
-        let context = context.clone();
         let pressed = pressed.clone();
-        let ws = ws.clone();
-        let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
-            // context.begin_path();
-            // context.move_to(event.offset_x() as f64, event.offset_y() as f64);
+        let closure = Closure::<dyn FnMut(_)>::new(move |_event: web_sys::MouseEvent| {
             pressed.set(true);
-            // ws.send_with_str(&format!(
-            //     "mouse got pressed at ({}, {})",
-            //     event.offset_x(),
-            //     event.offset_y()
-            // ))
-            // .unwrap();
         });
         canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -117,17 +135,20 @@ fn enable_draw(
         let ws = ws.clone();
         let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
             if pressed.get() {
-                let x = event.offset_x() as f64;
-                let y = event.offset_y() as f64;
+                let x = event.offset_x() as f64 / 10.0;
+                let y = event.offset_y() as f64 / 10.0;
 
-                // context.fill_style("rgba(255, 0, 0, 1)");
-                context.fill_rect(x, y, 1.0, 1.0);
                 // context.line_to(x, y);
                 // context.stroke();
                 // context.begin_path();
                 // context.move_to(x, y);
-                let message = graffitech_lib::CanvasMessage { x, y };
-                console_log!("sending message: {}", message);
+                context.fill_rect(x, y, 1.0, 1.0);
+                let message = graffitech_lib::CanvasMessage {
+                    x,
+                    y,
+                    color: color.as_string().unwrap_or_default(),
+                };
+                // console_log!("sending message: {}", message);
                 let message_bytes: Vec<u8> = serde_json::to_vec(&message).unwrap();
                 let uint8_array = js_sys::Uint8Array::from(&message_bytes[..]);
                 ws.send_with_array_buffer(&uint8_array.buffer()).unwrap();
@@ -139,12 +160,8 @@ fn enable_draw(
 
     // handle mouse release events
     {
-        let ws = ws.clone();
-        let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
+        let closure = Closure::<dyn FnMut(_)>::new(move |_event: web_sys::MouseEvent| {
             pressed.set(false);
-            // context.line_to(event.offset_x() as f64, event.offset_y() as f64);
-            // context.stroke();
-            // ws.send_with_str("mouse got released").unwrap();
         });
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -157,17 +174,20 @@ fn enable_draw(
 fn enable_recv(ws: &WebSocket, context: CanvasContext) -> Result<(), JsValue> {
     // create callback
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
-        // Handle difference Text/Binary,..
-        console_log!("message event, received: {:?}", e.data());
+        // console_log!("message event, received: {:?}", e.data());
         if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
             let array = js_sys::Uint8Array::new(&abuf);
-            let message = serde_json::from_slice::<String>(&array.to_vec())
-                .unwrap_or("parse error".to_string());
-            // clear last message without clearing the canvas
-            context.clear_rect(0.0, 0.0, 300.0, 30.0);
-            // write the message on the canvas
-            context.set_font("16px Arial");
-            let _ = context.fill_text(&message, 10.0, 20.0);
+            let message =
+                serde_json::from_slice::<graffitech_lib::CanvasMessage>(&array.to_vec()).unwrap();
+            console_log!("received message: {}", message);
+            // draw the received message
+            context.set_fill_style(&message.color.into());
+            context.fill_rect(message.x, message.y, 1.0, 1.0);
+            // context.set_stroke_style(&message.color.into());
+            // context.line_to(message.x, message.y);
+            // context.stroke();
+            // context.begin_path();
+            // context.move_to(message.x, message.y);
         }
     });
 
