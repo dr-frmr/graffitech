@@ -6,6 +6,8 @@ use web_sys::{
     window, ErrorEvent, MessageEvent, Request, RequestInit, RequestMode, Response, WebSocket,
 };
 
+mod fireworks;
+
 type CanvasContext = Rc<web_sys::CanvasRenderingContext2d>;
 
 macro_rules! console_log {
@@ -22,13 +24,22 @@ extern "C" {
 async fn start() -> Result<(), JsValue> {
     console_log!("hello from wasm");
 
-    let my_color = http_get("color").await?;
+    // let my_color = http_get("color").await?;
 
-    let ws = connect_to_node()?;
-    let (canvas, canvas_context) = make_canvas()?;
+    // let ws = connect_to_node()?;
+    let window = window().unwrap();
 
-    enable_draw(&ws, my_color, &canvas, canvas_context.clone())?;
-    enable_recv(&ws, canvas_context.clone())?;
+    // produce a canvas element, all of which our drawing will be done on
+    let document = window.document().unwrap();
+    let canvas = document
+        .create_element("canvas")?
+        .dyn_into::<web_sys::HtmlCanvasElement>()?;
+    document.body().unwrap().append_child(&canvas)?;
+    fireworks::run();
+    // let (canvas, canvas_context) = make_canvas()?;
+
+    // enable_draw(&ws, my_color, &canvas, canvas_context.clone())?;
+    // enable_recv(&ws, canvas_context.clone())?;
 
     Ok(())
 }
